@@ -1,4 +1,5 @@
 #include "PacketSniffer.h"
+#include "PacketAnalyzer.h"
 
 #include <pcap.h>
 #include <iostream>
@@ -44,6 +45,14 @@ PacketSniffer::~PacketSniffer() {
 
 // Метод для захвата указанного числа пакетов 
 void PacketSniffer::startCapture(int packetCount) {
-	// #FIXME
-	// if (pcap_loop(handle, packetCount, processPacket, 
+	// pcap_loop принимает u_char* в качестве последнего аргумента, поэтому кастим &packetAnalyzer к этому типу
+	if (pcap_loop(handle, packetCount, packetHandler, reinterpret_cast<u_char*>(&packetAnalyzer)) == -1) {
+		throw std::runtime_error("Ошибка при захвате пакетов: " + std::string(pcap_geterr(handle)));
+	}
 }	
+
+// Callback-обработчик для пакета
+void PacketSniffer::packetHandler(u_char* user, const struct pcap_pkthdr* packetHeader, const u_char* packet) {
+	auto* packetAnalyzer = reinterpret_cast<PacketAnalyzer*>(user);
+	packetAnalyzer->analyzePacket(packetHeader, packet);
+}

@@ -36,3 +36,6 @@
 
 # Swap files
 *.swap
+
+# Packet capture files
+*.pcap
