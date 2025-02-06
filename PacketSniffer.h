@@ -12,8 +12,8 @@ public:
 	static const int MAX_CAPTURE_BYTES = 2048, PROMISC = 1, TIMEOUT_MS = 1000;
 
 	// Фабричные методы для создания объекта по имени сетевого интерфейса/.pcap-файла
-	static PacketSniffer fromInterface(const std::string& networkInterfaceName);
-	static PacketSniffer fromFile(const std::string& pcapFileName);
+	static PacketSniffer* fromInterface(std::string netInterfaceName = "");
+	static PacketSniffer* fromFile(const std::string& pcapFileName);
 	// Деструктор с освобождением ресурсов
 	~PacketSniffer();
 	// Метод для захвата указанного числа пакетов
