@@ -18,9 +18,9 @@ public:
 	~PacketSniffer();
 	// Метод для захвата указанного числа пакетов
 	// (packetCount = -1 - захватывает бесконечно до возникновения ошибки)
-	void startCapture(int packetCount = -1);
+	void startCapture(const int packetCount = -1);
 	// Метод для вывода информации в CSV-файл
-	void toCSV(std::string& fileName) const;
+	void toCSV(const std::string& fileName) const;
 private:
 	pcap_t *handle = nullptr; // handle сессии захвата
 	std::string filter_exp = "ip"; // фильтр-выражение

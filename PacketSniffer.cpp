@@ -3,6 +3,8 @@
 
 #include <pcap.h>
 #include <iostream>
+#include <sstream>
+#include <fstream>
 #include <string>
 
 
@@ -55,4 +57,34 @@ void PacketSniffer::startCapture(int packetCount) {
 void PacketSniffer::packetHandler(u_char* user, const struct pcap_pkthdr* packetHeader, const u_char* packet) {
 	auto* packetAnalyzer = reinterpret_cast<PacketAnalyzer*>(user);
 	packetAnalyzer->analyzePacket(packetHeader, packet);
+}
+
+// Вывод накопленной через PacketAnalyzer статистики в CSV-файл
+void PacketSniffer::toCSV(const std::string& fileName) const {
+
+	// Лямбда-функция для перевода IP из десятичного числа в вид xxx.xxx.xxx.xxx
+	auto ipToStr = [](uint32_t ip) {
+		std::ostringstream oss;
+	    	oss << ((ip >> 24) & 0xFF) << "." 
+		    << ((ip >> 16) & 0xFF) << "." 
+		    << ((ip >> 8) & 0xFF) << "." 
+		    << (ip & 0xFF);
+	    return oss.str();
+	};
+
+	std::fstream out(fileName.c_str(), std::ios::out);
+	if (!out) {
+	    std::cerr << "Ошибка: не удалось открыть файл " << fileName << " для записи." << std::endl;
+	    return;
+	}
+	auto flowMap = packetAnalyzer.getFlowMap();
+	std::cout << "Размер flowMap: " << flowMap.size() << std::endl;
+	out << "IP source,IP dest,Port source,Port dest,Total packets,Total bytes" << std::endl;
+	for (const auto& [flowKey, flowStats] : flowMap) {
+		out << ipToStr(flowKey.ip_src) << "," << ipToStr(flowKey.ip_dest) << "," << flowKey.port_src
+		    << "," << flowKey.port_dest << "," << flowStats.packet_count << ","
+		    << flowStats.byte_count << std::endl;
+	}
+	out.close();
+	std::cout << "Информация сохранена в " << fileName << std::endl;
 }
