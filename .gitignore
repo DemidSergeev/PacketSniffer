@@ -39,3 +39,6 @@
 
 # Packet capture files
 *.pcap
+
+# CSV files
+*.csv

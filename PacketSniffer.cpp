@@ -2,28 +2,46 @@
 #include "PacketAnalyzer.h"
 
 #include <pcap.h>
+#include <sys/stat.h> // Для chmod
 #include <iostream>
+#include <sstream>
+#include <fstream>
 #include <string>
 
 
 // Фабричный метод для создания объекта PacketSniffer по имени сетевого интерфейса
-PacketSniffer PacketSniffer::fromInterface(const std::string& netInterfaceName) {
+PacketSniffer* PacketSniffer::fromInterface(std::string netInterfaceName) {
 	char errbuf[PCAP_ERRBUF_SIZE];
+	if (netInterfaceName.empty()) {
+		pcap_if_t *alldevs;
+		int result = pcap_findalldevs(&alldevs, errbuf);
+		if (result == PCAP_ERROR) {
+			throw std::runtime_error("Ошибка при поиске интерфейсов: " + std::string(errbuf));
+		} else if (result != 0) {
+			throw std::runtime_error("Доступные интерфейсы не найдены. Стоит попробовать запустить с sudo.");
+		} else {
+			netInterfaceName = alldevs->name;
+		}
+	}
+	std::cout << "Имя интерфейса: " << netInterfaceName << std::endl;
 	pcap_t* handle = pcap_open_live(netInterfaceName.c_str(), MAX_CAPTURE_BYTES, PROMISC, TIMEOUT_MS, errbuf);
-	return PacketSniffer(handle, errbuf);
+	bool isFromFile = false;
+	return new PacketSniffer(handle, isFromFile, errbuf);
 }
 
 // Фабричный метод для создания объекта PacketSniffer по имени .pcap-файла
-PacketSniffer PacketSniffer::fromFile(const std::string& pcapFileName) {
+PacketSniffer* PacketSniffer::fromFile(const std::string& pcapFileName) {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t* handle = pcap_open_offline(pcapFileName.c_str(), errbuf);	
-	return PacketSniffer(handle, errbuf);
+	bool isFromFile = true;
+	return new PacketSniffer(handle, isFromFile, errbuf);
 }
 
 // Конструктор, инициализирующий handle и устанавливающий фильтр на IPv4
-PacketSniffer::PacketSniffer(pcap_t* pcapHandle, const std::string& errMsg) : handle(pcapHandle) {
+PacketSniffer::PacketSniffer(pcap_t* pcapHandle, const bool _isFromFile, const std::string& errMsg)
+			: handle(pcapHandle), isFromFileFlag(_isFromFile) {
 	if (!pcapHandle) {
-		throw std::runtime_error("Ошибка при открытии объекта: " + errMsg);
+		throw std::runtime_error("Ошибка при открытии объекта: " + errMsg + "\nВозможно, стоит запустить с sudo.");
 	}	
 	// Компиляция фильтра из выражения filter_exp (у нас только IPv4 - поэтому он равен "ip")
 	int optimize = 1;
@@ -49,10 +67,45 @@ void PacketSniffer::startCapture(int packetCount) {
 	if (pcap_loop(handle, packetCount, packetHandler, reinterpret_cast<u_char*>(&packetAnalyzer)) == -1) {
 		throw std::runtime_error("Ошибка при захвате пакетов: " + std::string(pcap_geterr(handle)));
 	}
+	std::cout << "Пакетов с протоколом верхнего уровня, отличным от TCP и UDP: " << packetAnalyzer.getUnrecognized() << std::endl;
 }	
 
 // Callback-обработчик для пакета
 void PacketSniffer::packetHandler(u_char* user, const struct pcap_pkthdr* packetHeader, const u_char* packet) {
 	auto* packetAnalyzer = reinterpret_cast<PacketAnalyzer*>(user);
 	packetAnalyzer->analyzePacket(packetHeader, packet);
+}
+
+// Вывод накопленной через PacketAnalyzer статистики в CSV-файл
+void PacketSniffer::toCSV(const std::string& fileName) const {
+
+	// Лямбда-функция для перевода IP из десятичного числа в вид xxx.xxx.xxx.xxx
+	auto ipToStr = [](uint32_t ip) {
+		std::ostringstream oss;
+	    	oss << ((ip >> 24) & 0xFF) << "." 
+		    << ((ip >> 16) & 0xFF) << "." 
+		    << ((ip >> 8) & 0xFF) << "." 
+		    << (ip & 0xFF);
+	    return oss.str();
+	};
+
+	std::ofstream out(fileName.c_str(), std::ios::out);
+	if (!out) {
+		throw std::runtime_error("Ошибка: не удалось открыть файл " + fileName + " для записи.");
+	}
+
+	auto flowMap = packetAnalyzer.getFlowMap();
+	std::cout << "Идентифицировано " << flowMap.size() << " потоков. " << std::endl;
+	out << "IP source,IP dest,Port source,Port dest,Total packets,Total bytes" << std::endl;
+	for (const auto& [flowKey, flowStats] : flowMap) {
+		out << ipToStr(flowKey.ip_src) << "," << ipToStr(flowKey.ip_dest) << "," << flowKey.port_src
+		    << "," << flowKey.port_dest << "," << flowStats.packet_count << ","
+		    << flowStats.byte_count << std::endl;
+	}
+	out.close();
+	std::cout << "Информация сохранена в " << fileName << std::endl;
+}
+
+bool PacketSniffer::isFromFile() const {
+	return isFromFileFlag;
 }
