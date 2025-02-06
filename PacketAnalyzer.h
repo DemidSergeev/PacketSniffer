@@ -48,9 +48,11 @@ public:
 
 	// Геттер мапы потоков
 	std::unordered_map<FlowKey, FlowStats, FlowKeyHash> getFlowMap() const;
+	int getUnrecognized() const;
 
 private:
-	std::unordered_map<FlowKey, FlowStats, FlowKeyHash> flowMap;
+	std::unordered_map<FlowKey, FlowStats, FlowKeyHash> flowMap; // Поток -> статистика
+	int unrecognized = 0; // Количество пакетов, инкапсулирующих не TCP/UDP
 };
 
 #endif

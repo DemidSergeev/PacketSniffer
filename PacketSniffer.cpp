@@ -25,18 +25,21 @@ PacketSniffer* PacketSniffer::fromInterface(std::string netInterfaceName) {
 	}
 	std::cout << "Имя интерфейса: " << netInterfaceName << std::endl;
 	pcap_t* handle = pcap_open_live(netInterfaceName.c_str(), MAX_CAPTURE_BYTES, PROMISC, TIMEOUT_MS, errbuf);
-	return new PacketSniffer(handle, errbuf);
+	bool isFromFile = false;
+	return new PacketSniffer(handle, isFromFile, errbuf);
 }
 
 // Фабричный метод для создания объекта PacketSniffer по имени .pcap-файла
 PacketSniffer* PacketSniffer::fromFile(const std::string& pcapFileName) {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t* handle = pcap_open_offline(pcapFileName.c_str(), errbuf);	
-	return new PacketSniffer(handle, errbuf);
+	bool isFromFile = true;
+	return new PacketSniffer(handle, isFromFile, errbuf);
 }
 
 // Конструктор, инициализирующий handle и устанавливающий фильтр на IPv4
-PacketSniffer::PacketSniffer(pcap_t* pcapHandle, const std::string& errMsg) : handle(pcapHandle) {
+PacketSniffer::PacketSniffer(pcap_t* pcapHandle, const bool _isFromFile, const std::string& errMsg)
+			: handle(pcapHandle), isFromFileFlag(_isFromFile) {
 	if (!pcapHandle) {
 		throw std::runtime_error("Ошибка при открытии объекта: " + errMsg + "\nВозможно, стоит запустить с sudo.");
 	}	
@@ -64,6 +67,7 @@ void PacketSniffer::startCapture(int packetCount) {
 	if (pcap_loop(handle, packetCount, packetHandler, reinterpret_cast<u_char*>(&packetAnalyzer)) == -1) {
 		throw std::runtime_error("Ошибка при захвате пакетов: " + std::string(pcap_geterr(handle)));
 	}
+	std::cout << "Пакетов с протоколом верхнего уровня, отличным от TCP и UDP: " << packetAnalyzer.getUnrecognized() << std::endl;
 }	
 
 // Callback-обработчик для пакета
@@ -100,4 +104,8 @@ void PacketSniffer::toCSV(const std::string& fileName) const {
 	}
 	out.close();
 	std::cout << "Информация сохранена в " << fileName << std::endl;
+}
+
+bool PacketSniffer::isFromFile() const {
+	return isFromFileFlag;
 }

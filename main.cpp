@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
 	// Используем интерфейс по умолчанию, если программа выполняется без опций
 	if (!sniffer) {
 		sniffer = PacketSniffer::fromInterface();
+		packetCount = 100;
 	}
 
 	sniffer->startCapture(packetCount);

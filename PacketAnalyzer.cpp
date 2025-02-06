@@ -42,7 +42,7 @@ void PacketAnalyzer::analyzePacket(const struct pcap_pkthdr* packetHeader, const
 			break;
 		// Иной протокол
 		default:
-			std::cerr << "Протокол верхнего уровня не распознан. Анализатор работает только с TCP/UDP" << std::endl;
+			unrecognized++; // Подсчитываем количество пакетов, инкапсулирующих не TCP/UDP
 			return;
 	}
 
@@ -54,4 +54,8 @@ void PacketAnalyzer::analyzePacket(const struct pcap_pkthdr* packetHeader, const
 
 std::unordered_map<FlowKey, FlowStats, FlowKeyHash> PacketAnalyzer::getFlowMap() const {
 	return flowMap;
+}
+
+int PacketAnalyzer::getUnrecognized() const {
+	return unrecognized;
 }
