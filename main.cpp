@@ -5,8 +5,8 @@
 #include <iostream>
 
 void print_help(char* execName) {
-	std::cout << "PacketSniffer - тестовое задание для стажёра на позицию 'Разработчик C++/Python' (infotecs)" << std::endl;
-	std::cout << "Использование: " << execName << "[-h] [-f <filename> | -i [<interface>]] [-c <count>] [-o <filename>]" << std::endl;
+	std::cout << std::endl << "PacketSniffer - тестовое задание для стажёра на позицию 'Разработчик C++/Python' (infotecs)" << std::endl << std::endl;
+	std::cout << "Использование: " << execName << " [-h] [-f <filename> | -i [<interface>]] [-c <count>] [-o <filename>]" << std::endl;
 	std::cout << "Опции: " << std::endl
 		  << "\t-h (--help) - показать это сообщение." << std::endl
 		  << "\t-f (--file) <filename> - считывать пакеты из файла." << std::endl
@@ -29,42 +29,53 @@ int main(int argc, char *argv[]) {
 	std::string outFileName = "out.csv";
 	std::string netInterfaceName;
 	int opt;
-	while ((opt = getopt_long(argc, argv, "c:f:o:hi::", long_options, nullptr)) != -1) {
-		switch(opt) {
-			case 'h':
-				print_help(argv[0]);
-				return 0;
-			case 'f':
-				std::cout << "Чтение пакетов из файла " << optarg << std::endl;
-				sniffer = PacketSniffer::fromFile(std::string(optarg));
-				break;
-			case 'i':
-				netInterfaceName = optarg ? std::string(optarg) : std::string();
-				std::cout << "Захват пакетов с интерфейса " << (optarg ? optarg : "по умолчанию")
-					  << std::endl;
-				sniffer = PacketSniffer::fromInterface(netInterfaceName);	
-				break;
-			case 'c':
-				packetCount = atoi(optarg);
-				break;	
-			case 'o':
-				outFileName = std::string(optarg);
-				break;
-			case '?':
-				std::cout << "Неизвестная опция: " << optopt << std::endl;
-				print_help(argv[0]);
-				return 1;
-		}	
-	}
-				
-	// Используем интерфейс по умолчанию, если программа выполняется без опций
-	if (!sniffer) {
-		sniffer = PacketSniffer::fromInterface();
-		packetCount = 100;
-	}
 
-	sniffer->startCapture(packetCount);
-	sniffer->toCSV(outFileName);
+	try {
+		while ((opt = getopt_long(argc, argv, "c:f:o:hi::", long_options, nullptr)) != -1) {
+			switch(opt) {
+				case 'h':
+					print_help(argv[0]);
+					return 0;
+				case 'f':
+					std::cout << "Чтение пакетов из файла " << optarg << std::endl;
+					sniffer = PacketSniffer::fromFile(std::string(optarg));
+					break;
+				case 'i':
+					netInterfaceName = optarg ? std::string(optarg) : std::string();
+					std::cout << "Захват пакетов с интерфейса " << (optarg ? optarg : "по умолчанию")
+						  << std::endl;
+					sniffer = PacketSniffer::fromInterface(netInterfaceName);	
+					break;
+				case 'c':
+					packetCount = atoi(optarg);
+					break;	
+				case 'o':
+					outFileName = std::string(optarg);
+					break;
+				case '?':
+					print_help(argv[0]);
+					return 1;
+			}	
+		}
+					
+		if (optind < argc) {
+			std::cerr << "Ошибка: неизвестный аргумент '" << argv[optind] << "'\n";
+			print_help(argv[0]);
+			return 1;
+		}
+
+		// Используем интерфейс по умолчанию, если программа выполняется без опций
+		if (!sniffer) {
+			std::cout << "Используется интерфейс по умолчанию." << std::endl;
+			sniffer = PacketSniffer::fromInterface();
+			packetCount = 100;
+		}
+
+		sniffer->startCapture(packetCount);
+		sniffer->toCSV(outFileName);
+	} catch (std::exception& e) {
+		std::cerr << e.what() << std::endl;
+	}
 
 	return 0;
 }

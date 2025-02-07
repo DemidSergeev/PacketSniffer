@@ -41,7 +41,7 @@ PacketSniffer* PacketSniffer::fromFile(const std::string& pcapFileName) {
 PacketSniffer::PacketSniffer(pcap_t* pcapHandle, const bool _isFromFile, const std::string& errMsg)
 			: handle(pcapHandle), isFromFileFlag(_isFromFile) {
 	if (!pcapHandle) {
-		throw std::runtime_error("Ошибка при открытии объекта: " + errMsg + "\nВозможно, стоит запустить с sudo.");
+		throw std::runtime_error("Ошибка при открытии объекта:\n" + errMsg + "\nВозможно, стоит запустить с sudo.");
 	}	
 	// Компиляция фильтра из выражения filter_exp (у нас только IPv4 - поэтому он равен "ip")
 	int optimize = 1;
