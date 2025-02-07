@@ -46,13 +46,25 @@ public:
 	// Основной метод - анализ пакета и обновление статистики по потоку
 	void analyzePacket(const struct pcap_pkthdr* packetHeader, const u_char* packet);
 
+	// Вывод текущего количества захваченных пакетов
+	void showCounts() const;
+
 	// Геттер мапы потоков
 	std::unordered_map<FlowKey, FlowStats, FlowKeyHash> getFlowMap() const;
-	int getUnrecognized() const;
+
+	// Геттеры счётчиков пакетов
+	int getPacketCount() const;
+	int getCapturedCount() const;
+	int getUnrecognizedCount() const;
+
+	// Сеттер количества пакетов
+	void setPacketCount(const int packetCount);
 
 private:
 	std::unordered_map<FlowKey, FlowStats, FlowKeyHash> flowMap; // Поток -> статистика
-	int unrecognized = 0; // Количество пакетов, инкапсулирующих не TCP/UDP
+	int packetCount = 0; // Количество пакетов, которое требуется захватить
+	int capturedCount = 0; // Количество захваченных пакетов
+	int unrecognizedCount = 0; // Количество пакетов, инкапсулирующих не TCP/UDP
 };
 
 #endif

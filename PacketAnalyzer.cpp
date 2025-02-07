@@ -42,7 +42,7 @@ void PacketAnalyzer::analyzePacket(const struct pcap_pkthdr* packetHeader, const
 			break;
 		// Иной протокол
 		default:
-			unrecognized++; // Подсчитываем количество пакетов, инкапсулирующих не TCP/UDP
+			unrecognizedCount++; // Подсчитываем количество пакетов, инкапсулирующих не TCP/UDP
 			return;
 	}
 
@@ -50,12 +50,37 @@ void PacketAnalyzer::analyzePacket(const struct pcap_pkthdr* packetHeader, const
 	FlowKey flowKey = {ip_src, ip_dest, port_src, port_dest};
 	flowMap[flowKey].packet_count++;
 	flowMap[flowKey].byte_count += packetHeader->len;
+	capturedCount++;
 }
 
+// Вывод текущего количества захваченных пакетов. Делает возврат каретки!
+void PacketAnalyzer::showCounts() const {
+	printf("\r%d\t", capturedCount);
+	if (packetCount > 0) {
+		double percentage = (double) capturedCount / packetCount * 100;
+		printf("(%4.1f%%)", percentage);
+	}
+	fflush(stdout); // flush потока вывода
+}
+
+// Геттеры
 std::unordered_map<FlowKey, FlowStats, FlowKeyHash> PacketAnalyzer::getFlowMap() const {
 	return flowMap;
 }
 
-int PacketAnalyzer::getUnrecognized() const {
-	return unrecognized;
+int PacketAnalyzer::getPacketCount() const {
+	return packetCount;
+}
+
+int PacketAnalyzer::getCapturedCount() const {
+	return capturedCount;
+}
+
+int PacketAnalyzer::getUnrecognizedCount() const {
+	return unrecognizedCount;
+}
+
+// Сеттеры
+void PacketAnalyzer::setPacketCount(const int _packetCount) {
+	packetCount = _packetCount;
 }
