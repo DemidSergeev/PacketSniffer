@@ -41,7 +41,7 @@ PacketSniffer* PacketSniffer::fromFile(const std::string& pcapFileName) {
 PacketSniffer::PacketSniffer(pcap_t* pcapHandle, const bool _isFromFile, const std::string& errMsg)
 			: handle(pcapHandle), isFromFileFlag(_isFromFile) {
 	if (!pcapHandle) {
-		throw std::runtime_error("Ошибка при открытии объекта:\n" + errMsg + "\nВозможно, стоит запустить с sudo.");
+		throw std::runtime_error("Ошибка при открытии объекта:\n'" + errMsg + "'");
 	}	
 	// Компиляция фильтра из выражения filter_exp (у нас только IPv4 - поэтому он равен "ip")
 	int optimize = 1;
@@ -64,16 +64,27 @@ PacketSniffer::~PacketSniffer() {
 // Метод для захвата указанного числа пакетов 
 void PacketSniffer::startCapture(int packetCount) {
 	// pcap_loop принимает u_char* в качестве последнего аргумента, поэтому кастим &packetAnalyzer к этому типу
+	std::cout << "Начат захват пакетов." << std::endl << "Захвачено пакетов:" << std::endl;
+	packetAnalyzer.setPacketCount(packetCount);
 	if (pcap_loop(handle, packetCount, packetHandler, reinterpret_cast<u_char*>(&packetAnalyzer)) == -1) {
 		throw std::runtime_error("Ошибка при захвате пакетов: " + std::string(pcap_geterr(handle)));
 	}
-	std::cout << "Пакетов с протоколом верхнего уровня, отличным от TCP и UDP: " << packetAnalyzer.getUnrecognized() << std::endl;
+	packetAnalyzer.showCounts();
+	std::cout << std::endl << "Захват пакетов завершён." << std::endl
+		  << "Захвачено требуемых пакетов: " << packetAnalyzer.getCapturedCount() << std::endl
+		  << "Пакетов с протоколом верхнего уровня, отличным от TCP и UDP: " << packetAnalyzer.getUnrecognizedCount() << std::endl;
 }	
 
 // Callback-обработчик для пакета
 void PacketSniffer::packetHandler(u_char* user, const struct pcap_pkthdr* packetHeader, const u_char* packet) {
 	auto* packetAnalyzer = reinterpret_cast<PacketAnalyzer*>(user);
 	packetAnalyzer->analyzePacket(packetHeader, packet);
+	int capturedCount = packetAnalyzer->getCapturedCount();
+	int packetCount = packetAnalyzer->getPacketCount();
+	packetCount = packetCount > 0 ? packetCount : 1000;
+	if (capturedCount == 1 || capturedCount % (packetCount / 500) == 0) {
+		packetAnalyzer->showCounts();
+	}
 }
 
 // Вывод накопленной через PacketAnalyzer статистики в CSV-файл
@@ -91,7 +102,7 @@ void PacketSniffer::toCSV(const std::string& fileName) const {
 
 	std::ofstream out(fileName.c_str(), std::ios::out);
 	if (!out) {
-		throw std::runtime_error("Ошибка: не удалось открыть файл " + fileName + " для записи.");
+		throw std::runtime_error("Ошибка: не удалось открыть файл " + fileName + " для записи. Проверьте разрешения.");
 	}
 
 	auto flowMap = packetAnalyzer.getFlowMap();

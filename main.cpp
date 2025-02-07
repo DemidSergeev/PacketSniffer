@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 		if (!sniffer) {
 			std::cout << "Используется интерфейс по умолчанию." << std::endl;
 			sniffer = PacketSniffer::fromInterface();
-			packetCount = 100;
+			packetCount = 1000;
 		}
 
 		sniffer->startCapture(packetCount);
